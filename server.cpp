@@ -82,9 +82,12 @@ void Server::run() {
         max_sd = serverSocket;
 
         for (int clientSocket : clientSockets) {
-            FD_SET(clientSocket, &readfds);
-            if (clientSocket > max_sd)
+            if (clientSocket > 0) {
+                FD_SET(clientSocket, &readfds);
+            }
+            if (clientSocket > max_sd) {
                 max_sd = clientSocket;
+            }
         }
 
         struct timeval timeout;
@@ -92,7 +95,8 @@ void Server::run() {
         timeout.tv_usec = 0;
 
         int activity = select(max_sd + 1, &readfds, NULL, NULL, &timeout);
-        if (activity == -1) {
+        
+        if (activity < 0 && errno != EINTR) {
             std::cerr << "select error: " << strerror(errno) << std::endl;
             continue;
         }
@@ -107,11 +111,19 @@ void Server::run() {
         for (auto it = clientSockets.begin(); it != clientSockets.end();) {
             int clientSocket = *it;
             if (FD_ISSET(clientSocket, &readfds)) {
-                handleClient(clientSocket);
-                // If handleClient closed the socket, it will be removed from clientSockets
-                if (std::find(clientSockets.begin(), clientSockets.end(), clientSocket) == clientSockets.end()) {
+                char buffer[1024] = {0};
+                int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+                if (bytesReceived <= 0) {
+                    if (bytesReceived == 0) {
+                        std::cout << "Client disconnected, socket fd " << clientSocket << std::endl;
+                    } else {
+                        std::cerr << "recv() failed for socket " << clientSocket << ": " << strerror(errno) << std::endl;
+                    }
+                    closeClientSocket(clientSocket);
                     it = clientSockets.erase(it);
                 } else {
+                    std::cout << "Received from client " << clientSocket << ": " << std::string(buffer, bytesReceived) << std::endl;
+                    send(clientSocket, buffer, bytesReceived, 0);
                     ++it;
                 }
             } else {
@@ -119,6 +131,11 @@ void Server::run() {
             }
         }
     }
+}
+
+void Server::closeClientSocket(int clientSocket) {
+    close(clientSocket);
+    std::cout << "Closed connection on socket " << clientSocket << std::endl;
 }
 
 // New implementations for missing methods
@@ -151,15 +168,3 @@ void Server::stop() {
 
     std::cout << "Server stopped!" << std::endl;
 }
-
-void Server::closeClientSocket(int clientSocket) {
-    close(clientSocket);
-
-    auto it = std::find(clientSockets.begin(), clientSockets.end(), clientSocket);
-    if (it != clientSockets.end()) {
-        clientSockets.erase(it);
-    }
-
-    std::cout << "Closed connection on socket " << clientSocket << std::endl;
-}
-

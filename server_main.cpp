@@ -5,6 +5,5 @@ int main() {
 	if (server.start()) {
 		server.run();
 	}
-
 	return 0;
 }
