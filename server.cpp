@@ -13,15 +13,6 @@ Server::~Server() {
     stop();
 }
 
-bool Server::createSocket() {
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == -1) {
-        std::cerr << "Can not create a socket: " << strerror(errno) << std::endl;
-        return false;
-    }
-    return true;
-}
-
 bool Server::bindSocket() {
     sockaddr_in address;
     address.sin_family = AF_INET;

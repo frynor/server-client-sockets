@@ -26,15 +26,6 @@ bool Client::connect() {
 
 }
 
-bool Client::createSocket() {
-	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-	if (clientSocket == -1) {
-		std::cerr << "Failed to create a client socket!" << strerror(errno) << std::endl;
-		return false;
-	}
-	return true;
-}
-
 bool Client::sendMessage(const std::string& message) {
 	if (send(clientSocket, message.c_str(), message.length(), 0) == -1) {
 		std::cerr << "Cannot send message to the server!" << strerror(errno) << std::endl;
